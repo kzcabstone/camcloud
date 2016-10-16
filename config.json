@@ -1,0 +1,7 @@
+{
+    "http_port":8035,
+    "cluster_ip_address":"127.0.0.1",
+    "su_id":"15337",
+    "db_inserter_data_channel_depth":512
+}
+

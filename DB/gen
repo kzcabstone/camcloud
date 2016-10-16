@@ -1,0 +1,3 @@
+cqlsh -u yakhe -f schema.cql
+cqlc -i 127.0.0.1 -k camcloud -p main -o ../generated.go && chmod 644 ../generated.go
+
