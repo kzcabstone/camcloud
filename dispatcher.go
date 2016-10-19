@@ -23,7 +23,8 @@ func commonWrapper(f func(http.ResponseWriter, *http.Request) interface{}) func(
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		u := f(w, r)
-		b, _ := json.Marshal(u)
+		b, err := json.Marshal(u)
+		check(err)
 		w.Write(b)
 	}
 }
@@ -48,8 +49,6 @@ func Main() {
 			return
 		}
 	}
-
-
 
 	initializeDBAccessor()
 

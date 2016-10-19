@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"log"
-	//"strconv"
+	"strconv"
 )
 
 type uploaderResponse struct {
 	Status    string    `json:"status"`
+}
+
+type queryResponse struct {
+	Count_of_records int `json:"count_of_records"`
+	Records []CamRecord `json:"records"`
 }
 
 func recordUploader(w http.ResponseWriter, r *http.Request) interface{} {
@@ -23,10 +28,15 @@ func recordUploader(w http.ResponseWriter, r *http.Request) interface{} {
 		return u
 	}
 
-	rchan := make(chan string)
-	rec.Result_channel = rchan
 
-	db_inserter_data_channel <- rec
+	rchan := make(chan string)
+
+	insert_cmd := InsertCmd {
+		Record: rec,
+		Result_channel: rchan,
+	}
+
+	db_inserter_data_channel <- insert_cmd
 	u.Status = <- rchan
 
 	return u
@@ -38,29 +48,41 @@ func queryRecords(w http.ResponseWriter, r *http.Request) interface{} {
 	vc := vars["vc"]
 	vt := vars["vt"]
 	vp := vars["vp"]
+	tss, err := strconv.ParseInt(vars["tss"], 10, 64) // timestamp start
+	check(err)
+	tse, err := strconv.ParseInt(vars["tse"], 10, 64) // timestamp end
+	check(err)
 
-	if vars["suid"] == "" {
-		log.Printf("GetArticlesForUser: invalid request, no suid. Ignore")
-		return nil
+	rchan := make(chan CamRecord, conf.DBInserterDataChannelDepth)
+
+	cmd := QueryCmd {
+		Cam: cam,
+		Vehicle_color: vc,
+		Vehicle_type: vt,
+		Vehicle_plate: vp,
+		Timestamp_start: tss,
+		Timestamp_end: tse, 
+		Result_chan: rchan,
 	}
-	if vars["uid"] == "" {
-		log.Printf("GetArticlesForUser: invalid request, no uid. Ignore")
-		return nil
-	}
-
-	suid := vars["suid"]
-	if !checkSUAuth(suid) {
-		log.Printf("GetArticlesForUser: auth failed %s", suid)
-		return nil
-	}
-
-	/*
-	uid := vars["uid"]
-	u := new(get_feeds_of_user_response)
-
-	u.Fids = getFeedsForUser(uid)
-	*/
-	log.Printf("queryRecords: cam %s, vc %s, vt %s, vp %s", cam, vc, vt, vp)
 	
-	return nil
+	db_query_channel <- cmd
+
+	count := 0
+	u := new(queryResponse)
+	// read results
+	for {
+		r, more := <-rchan
+		if more {
+			count++
+			u.Records = append(u.Records, r)
+			//log.Printf("%#v\n", r)
+		} else {
+			log.Printf("Sending back %d records\n", count)
+			break
+		}
+	}
+
+	u.Count_of_records = count
+	
+	return u
 }

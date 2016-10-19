@@ -24,3 +24,6 @@ CREATE TABLE records
     PRIMARY KEY (cam, vehicle_color, vehicle_type, vehicle_plate, id)
 );
 
+CREATE INDEX ON records (vehicle_type);
+CREATE INDEX ON records (vehicle_color);
+CREATE INDEX ON records (vehicle_plate);
